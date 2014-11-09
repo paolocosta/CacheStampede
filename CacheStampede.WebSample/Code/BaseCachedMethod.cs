@@ -28,12 +28,7 @@ using System.Web.Caching;
         /// </summary>
         protected System.Web.Caching.CacheItemPriority _Priority = System.Web.Caching.CacheItemPriority.Normal;
 
-        /// <summary>
-        /// If true the object is saved in cache, otherwise it's always retrieved from data source
-        /// </summary>
-        protected bool _UseCache = true;
-
-       
+        
 
         /// <summary>
         /// This property builds the cache key by using the reflected name of the class and the GetCacheKey 
@@ -66,8 +61,7 @@ using System.Web.Caching;
         /// <returns></returns>
         public T GetData()
         {
-            if (_UseCache)
-            {
+            
                 var expirationTimeChanged = false;
                 var cacheObject = GetCachedObject(out expirationTimeChanged);
 
@@ -91,11 +85,6 @@ using System.Web.Caching;
                     return LoadRealDataAndContextuallyAddToCache();
                     
                 }
-            }
-            else
-            {
-                return LoadData();
-            }
         }
 
         private CacheContainer GetCachedObject(out bool expirationTimeChanged)

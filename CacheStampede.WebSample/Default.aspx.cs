@@ -19,8 +19,7 @@ namespace CacheStampede.WebSample
                     Request.QueryString["id"],
                     10,
                     5,
-                    System.Web.Caching.CacheItemPriority.Normal,
-                    true).GetData();
+                    System.Web.Caching.CacheItemPriority.Normal).GetData();
 
 
                 lblCreationTime.Text = product.LastRetrievalTime.ToString("HH:mm:ss");

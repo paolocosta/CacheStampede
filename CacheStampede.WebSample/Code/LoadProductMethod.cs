@@ -16,13 +16,13 @@ using System.Net;
         /// <param name="priority"></param>
         /// <param name="useCache"></param>
         /// <param name="doCallBack"></param>
-        public LoadProductMethod(string productId, int expiration, int cacheStampedeExtraExpirationTime, System.Web.Caching.CacheItemPriority priority, bool useCache)
+        public LoadProductMethod(string productId, int expiration, int cacheStampedeExtraExpirationTime, System.Web.Caching.CacheItemPriority priority)
         {
             _productId = productId;
             _Expiration = expiration;
             _CacheStampedeExtraExpirationTime = cacheStampedeExtraExpirationTime;
             _Priority = priority;
-            _UseCache = useCache;
+           
         }
 
         /// <summary>
