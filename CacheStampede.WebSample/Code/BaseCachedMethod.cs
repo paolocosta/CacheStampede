@@ -95,7 +95,13 @@ using System.Web.Caching;
             //Increase the expiration time as soon as possible
             if (cachedObject!=null && cachedObject.ExpirationTime < DateTime.Now)
             {
-                cachedObject.ExpirationTime = cachedObject.ExpirationTime.AddSeconds(_CacheStampedeExtraExpirationTime);
+                var newExpirationTime = cachedObject.ExpirationTime.AddSeconds(_CacheStampedeExtraExpirationTime);
+                cachedObject = new CacheContainer()
+                {
+                    Value = cachedObject.Value,
+                    ExpirationTime = newExpirationTime
+                };
+                HttpContext.Current.Cache.Insert(CacheKey, cachedObject, null, newExpirationTime, System.Web.Caching.Cache.NoSlidingExpiration, _Priority, null);
                 expirationTimeChanged = true;
             }
             return cachedObject;
