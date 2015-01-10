@@ -87,6 +87,12 @@ using System.Web.Caching;
                 }
         }
 
+        /// <summary>
+        /// Retrieves the object from cache and immediately ches whether it is virtually expired.
+        /// If so, the expiration time is increased and the object is inserted again in cache
+        /// </summary>
+        /// <param name="expirationTimeChanged"></param>
+        /// <returns></returns>
         private CacheContainer GetCachedObject(out bool expirationTimeChanged)
         {
             expirationTimeChanged = false;
@@ -118,6 +124,10 @@ using System.Web.Caching;
             return result;
         }
 
+        /// <summary>
+        /// Adds the data to cache
+        /// </summary>
+        /// <param name="localResult"></param>
         private void AddDataToCache(T localResult)
         {
             DateTime expiration = DateTime.Now.AddSeconds(_Expiration);
