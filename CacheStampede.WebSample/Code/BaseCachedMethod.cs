@@ -13,7 +13,6 @@ using System.Web.Caching;
         {
             internal T Value { get; set; }
             internal DateTime ExpirationTime { get; set; }
-
         }
         /// <summary>
         /// cache expiration in seconds. Default is 60
