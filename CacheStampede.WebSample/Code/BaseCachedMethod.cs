@@ -107,6 +107,10 @@ using System.Web.Caching;
             return cachedObject;
         }
 
+        /// <summary>
+        /// Loads the actual data from the data source and inserts the result in cache
+        /// </summary>
+        /// <returns></returns>
         private T LoadRealDataAndContextuallyAddToCache()
         {
             T result = LoadData();
