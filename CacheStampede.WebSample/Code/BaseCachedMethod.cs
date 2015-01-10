@@ -8,7 +8,7 @@ using System.Web.Caching;
     
     public abstract class BaseCachedMethod<T>
     {
-
+non compila
         internal class CacheContainer
         {
             internal T Value { get; set; }

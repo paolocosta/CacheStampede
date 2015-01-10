@@ -20,6 +20,6 @@ public class Product
 
     public Product(string productId)
     {
-        LastRetrievalTime = DateTime.Now;
+        LastRetrievalTime = DateTime.Now;  
     }
 }
