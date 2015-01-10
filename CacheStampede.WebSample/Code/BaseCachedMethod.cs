@@ -5,14 +5,16 @@ using System.Web;
 using System.Web.Caching;
 
 
-    internal class CacheContainer
-    {
-        internal object Value { get; set; }
-        internal DateTime ExpirationTime { get; set; }
-        
-    }
+    
     public abstract class BaseCachedMethod<T>
     {
+
+        internal class CacheContainer
+        {
+            internal T Value { get; set; }
+            internal DateTime ExpirationTime { get; set; }
+
+        }
         /// <summary>
         /// cache expiration in seconds. Default is 60
         /// </summary>
@@ -61,30 +63,28 @@ using System.Web.Caching;
         /// <returns></returns>
         public T GetData()
         {
-            
-                var expirationTimeChanged = false;
-                var cacheObject = GetCachedObject(out expirationTimeChanged);
+            var expirationTimeChanged = false;
+            var cacheObject = GetCachedObject(out expirationTimeChanged);
 
-                Func<bool> isCachedObjectValid = () => cacheObject != null && !expirationTimeChanged;
-                
-                if (isCachedObjectValid())
+            Func<bool> isCachedObjectValid = () => cacheObject != null && !expirationTimeChanged;
+
+            if (isCachedObjectValid())
+            {
+                return (T)(cacheObject.Value);
+            }
+
+            lock (string.Intern(CacheKey))
+            {
+                if (!expirationTimeChanged)
                 {
-                    return (T)(cacheObject.Value);
-                }
-                
-                lock (string.Intern(CacheKey))
-                {
-                    if (!expirationTimeChanged)
+                    cacheObject = GetCachedObject(out expirationTimeChanged);
+                    if (isCachedObjectValid())
                     {
-                        cacheObject = GetCachedObject(out expirationTimeChanged);
-                        if (isCachedObjectValid())
-                        {
-                            return (T)(cacheObject.Value);
-                        }
+                        return (T)(cacheObject.Value);
                     }
-                    return LoadRealDataAndContextuallyAddToCache();
-                    
                 }
+                return LoadRealDataAndContextuallyAddToCache();
+            }
         }
 
         /// <summary>
@@ -97,20 +97,19 @@ using System.Web.Caching;
         {
             expirationTimeChanged = false;
             var cachedObject =  HttpContext.Current.Cache.Get(CacheKey) as CacheContainer;
+            expirationTimeChanged = IfVirtuallyExpiredIncreaseRealExpirationTimeAndimmediatelyInsertInCache(expirationTimeChanged, cachedObject);
+            return cachedObject;
+        }
 
-            //Increase the expiration time as soon as possible
-            if (cachedObject!=null && cachedObject.ExpirationTime < DateTime.Now)
+        private bool IfVirtuallyExpiredIncreaseRealExpirationTimeAndimmediatelyInsertInCache(bool expirationTimeChanged, CacheContainer cachedObject)
+        {
+            if (cachedObject != null && cachedObject.ExpirationTime < DateTime.Now)
             {
                 var newExpirationTime = cachedObject.ExpirationTime.AddSeconds(_CacheStampedeExtraExpirationTime);
-                cachedObject = new CacheContainer()
-                {
-                    Value = cachedObject.Value,
-                    ExpirationTime = newExpirationTime
-                };
-                HttpContext.Current.Cache.Insert(CacheKey, cachedObject, null, newExpirationTime, System.Web.Caching.Cache.NoSlidingExpiration, _Priority, null);
+                AddDataToCache(cachedObject.Value, newExpirationTime, newExpirationTime);
                 expirationTimeChanged = true;
             }
-            return cachedObject;
+            return expirationTimeChanged;
         }
 
         /// <summary>
@@ -120,7 +119,8 @@ using System.Web.Caching;
         private T LoadRealDataAndContextuallyAddToCache()
         {
             T result = LoadData();
-            AddDataToCache(result);
+            DateTime now = DateTime.Now;
+            AddDataToCache(result, now.AddSeconds(_Expiration), now.AddSeconds(_Expiration).AddSeconds(_CacheStampedeExtraExpirationTime));
             return result;
         }
 
@@ -128,14 +128,13 @@ using System.Web.Caching;
         /// Adds the data to cache
         /// </summary>
         /// <param name="localResult"></param>
-        private void AddDataToCache(T localResult)
+        private void AddDataToCache(T localResult, DateTime virtualExpiration, DateTime realExpiration)
         {
-            DateTime expiration = DateTime.Now.AddSeconds(_Expiration);
             CacheContainer obj = new CacheContainer()
             {
                 Value = localResult,
-                ExpirationTime = expiration
+                ExpirationTime = virtualExpiration
             };
-            HttpContext.Current.Cache.Insert(CacheKey, obj, null, expiration.AddSeconds(_CacheStampedeExtraExpirationTime), System.Web.Caching.Cache.NoSlidingExpiration, _Priority, null);
+            HttpContext.Current.Cache.Insert(CacheKey, obj, null, realExpiration, System.Web.Caching.Cache.NoSlidingExpiration, _Priority, null);
         }
     }
