@@ -63,64 +63,42 @@ using System.Web.Caching;
         public T GetData()
         {
             var expirationTimeChanged = false;
-            var cacheObject = GetCachedObject(out expirationTimeChanged);
 
-            Func<bool> isCachedObjectValid = () => cacheObject != null && !expirationTimeChanged;
+            var cacheObject = HttpContext.Current.Cache.Get(CacheKey) as CacheContainer;
 
-            if (isCachedObjectValid())
+            //Check if the object is virtually expired, that means that we have to insert it in cache again 
+            //with a longer virtual expiration and behave as we didn't find it in cache
+            if (IsVirtuallyExpired(cacheObject))
+            {
+                var newExpirationTime = cacheObject.ExpirationTime.AddSeconds(_CacheStampedeExtraExpirationTime);
+                
+                // Here we don't need to set a different virtual expiration time as this object will
+                // read only fot the time necessary to perform the query
+                AddDataToCache(cacheObject.Value, newExpirationTime, newExpirationTime);
+
+                expirationTimeChanged = true;
+            }
+
+            //Happy case, the object was in cache and not virtually expired
+            if (cacheObject != null && !expirationTimeChanged)
             {
                 return (T)(cacheObject.Value);
             }
 
+            // We retrieve the actual data and insert into in cache with a virtual expiration shorter than
+            // the real expiration
             lock (string.Intern(CacheKey))
             {
-                if (!expirationTimeChanged)
-                {
-                    cacheObject = GetCachedObject(out expirationTimeChanged);
-                    if (isCachedObjectValid())
-                    {
-                        return (T)(cacheObject.Value);
-                    }
-                }
-                return LoadRealDataAndContextuallyAddToCache();
+                T result = LoadData();
+                DateTime now = DateTime.Now;
+                AddDataToCache(result, now.AddSeconds(_Expiration), now.AddSeconds(_Expiration).AddSeconds(_CacheStampedeExtraExpirationTime));
+                return result;
             }
         }
 
-        /// <summary>
-        /// Retrieves the object from cache and immediately ches whether it is virtually expired.
-        /// If so, the expiration time is increased and the object is inserted again in cache
-        /// </summary>
-        /// <param name="expirationTimeChanged"></param>
-        /// <returns></returns>
-        private CacheContainer GetCachedObject(out bool expirationTimeChanged)
+        private static bool IsVirtuallyExpired(CacheContainer cachedObject)
         {
-            expirationTimeChanged = false;
-            var cachedObject =  HttpContext.Current.Cache.Get(CacheKey) as CacheContainer;
-            expirationTimeChanged = IfVirtuallyExpiredIncreaseRealExpirationTimeAndimmediatelyInsertInCache(expirationTimeChanged, cachedObject);
-            return cachedObject;
-        }
-
-        private bool IfVirtuallyExpiredIncreaseRealExpirationTimeAndimmediatelyInsertInCache(bool expirationTimeChanged, CacheContainer cachedObject)
-        {
-            if (cachedObject != null && cachedObject.ExpirationTime < DateTime.Now)
-            {
-                var newExpirationTime = cachedObject.ExpirationTime.AddSeconds(_CacheStampedeExtraExpirationTime);
-                AddDataToCache(cachedObject.Value, newExpirationTime, newExpirationTime);
-                expirationTimeChanged = true;
-            }
-            return expirationTimeChanged;
-        }
-
-        /// <summary>
-        /// Loads the actual data from the data source and inserts the result in cache
-        /// </summary>
-        /// <returns></returns>
-        private T LoadRealDataAndContextuallyAddToCache()
-        {
-            T result = LoadData();
-            DateTime now = DateTime.Now;
-            AddDataToCache(result, now.AddSeconds(_Expiration), now.AddSeconds(_Expiration).AddSeconds(_CacheStampedeExtraExpirationTime));
-            return result;
+            return cachedObject != null && cachedObject.ExpirationTime < DateTime.Now;
         }
 
         /// <summary>
